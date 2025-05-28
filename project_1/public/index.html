@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Quotes</title>
+  </head>
+  <body>
+    <div id="quote-container"></div>
+
+    <form id="quote-form">
+      <input type="text" name="text" placeholder="text" />
+      <input type="text" name="author" placeholder="author" />
+      <button type="submit">Submit</button>
+    </form>
+
+    <script>
+      let QUOTES = [];
+      let LOADING = "INIT";
+      const quoteForm = document.getElementById("quote-form");
+
+      quoteForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const text = quoteForm.text.value;
+        const author = quoteForm.author.value;
+        createNewQuote({ text, author });
+      });
+
+      function createNewQuote(quote) {
+        if (LOADING == "") {
+          LOADING = "CREATE";
+          fetch("/quote", {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(quote),
+          })
+            .then((res) => res.json())
+            .then((newQuote) => {
+              QUOTES.push(newQuote);
+              renderQuotes(QUOTES);
+              LOADING = "";
+            });
+        }
+      }
+
+      function deleteQuote(quote) {
+        if (LOADING == "") {
+          LOADING = "DELETE";
+          fetch(`/quote?id=${encodeURIComponent(quote.id)}`, {
+            method: "DELETE",
+          })
+            .then((res) => res.json())
+            .then((data) => {
+              if (data.success) {
+                QUOTES = QUOTES.filter((q) => q.id != quote.id);
+                renderQuotes(QUOTES)
+              }
+              LOADING = "";
+            });
+        }
+      }
+
+      function renderQuotes(quotes) {
+        console.log("rendering : ",quotes)
+        
+        const quoteContainer = document.getElementById("quote-container");
+        console.log(`removing ${quoteContainer.children.length} children`)
+        
+        while(quoteContainer.firstChild){
+            quoteContainer.removeChild(quoteContainer.firstChild)
+        }
+        
+        console.log(`adding ${quotes.length}`)        
+        
+        quotes.map((q) => createQuoteNode(q)).forEach((node) => {
+          quoteContainer.appendChild(node);
+        });
+
+      }
+
+      function createQuoteNode(quote) {
+        const { id, text, author } = quote;
+        const div = document.createElement("div");
+        const textPart = document.createElement("p");
+        textPart.classList.add("quote-text");
+        textPart.innerText = text
+        const authorPart = document.createElement("p");
+        authorPart.innerText = author
+        const deleteButton = document.createElement("button");
+        deleteButton.innerText = "DELETE"
+        deleteButton.addEventListener("click", (e) => {
+            deleteQuote(quote)
+        });
+        authorPart.classList.add("quote-author");
+        div.appendChild(textPart);
+        div.appendChild(authorPart);
+        div.appendChild(deleteButton)
+        return div;
+      }
+
+      function main() {
+        fetch("/quotes")
+          .then((res) => res.json())
+          .then((quotes) => {
+            QUOTES = quotes;
+            renderQuotes(QUOTES);
+            LOADING = "";
+          });
+      }
+
+      document.addEventListener("DOMContentLoaded",()=>{
+        main()
+      })
+    </script>
+  </body>
+</html>

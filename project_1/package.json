@@ -1,0 +1,22 @@
+{
+  "name": "project_1",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@types/express": "^5.0.2",
+    "@types/node": "^22.15.23",
+    "prisma": "^6.8.2",
+    "tsx": "^4.19.4"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.8.2",
+    "body-parser": "^2.2.0",
+    "express": "^5.1.0"
+  }
+}
