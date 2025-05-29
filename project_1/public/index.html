@@ -4,31 +4,120 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Quotes</title>
+    <style>
+      :root {
+        font-family: "Trebuchet MS", "Lucida Sans Unicode", "Lucida Grande",
+          "Lucida Sans", Arial, sans-serif;
+      }
+      #quote-container {
+        display: flex;
+        flex-direction: row;
+        gap: 2em;
+        flex-wrap: wrap;
+      }
+      #quote-container .quote-text {
+        font-size: larger;
+      }
+      #quote-container .quote-author {
+        font-size: smaller;
+        text-align: right;
+      }
+      #quote-container > div {
+        position: relative;
+        border: solid 2px black;
+        border-radius: 0.25em;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5em;
+        min-width: 300px;
+        max-width: 300px;
+      }
+      #quote-container button {
+        position: absolute;
+        bottom: 6px;
+        background-color: rgb(228, 112, 112);
+        border-radius: 0.25em;
+        border: solid 2px black;
+      }
+      #quote-container span {
+        text-align: right;
+      }
+
+      #quote-form {
+        margin-top: 2em;
+        display: flex;
+        flex-direction: column;
+        width: 400px;
+        gap: 0.5em;
+      }
+      #quote-form input {
+        padding: 4px 5px;
+      }
+      #loading-state {
+        min-height: 1em;
+      }
+    </style>
   </head>
   <body>
+    <div
+      style="display: flex; flex-direction: row; align-items: center; gap: 1em;"
+    >
+      <h1>QUOTES</h1>
+      <span id="loading-state"> </span>
+    </div>
     <div id="quote-container"></div>
-
     <form id="quote-form">
+      <h1>Add a new quote</h1>
       <input type="text" name="text" placeholder="text" />
       <input type="text" name="author" placeholder="author" />
       <button type="submit">Submit</button>
     </form>
 
     <script>
-      let QUOTES = [];
-      let LOADING = "INIT";
+      let [getGlobalQuotes, setGlobalQuotes] = useState([], renderQuotes);
+      let [getGlobalLoading, setGlobalLoading] = useState("", (loadState) => {
+        const loadingContainer = document.getElementById("loading-state");
+        let text = "";
+        switch (loadState) {
+          case "INIT":
+            text = "Loading quotes from the server";
+            break;
+          case "CREATE":
+            text = "Creating a new quote";
+            break;
+          case "DELETE":
+            text = "Deleting a quote";
+            break;
+          default:
+            text = "";
+        }
+        loadingContainer.innerText = text;
+      });
+
+      function useState(defaultValue, renderer) {
+        let value = defaultValue;
+        const setValue = (newValue) => {
+          value = newValue;
+          renderer(newValue);
+        };
+        const getValue = () => value;
+        return [getValue, setValue];
+      }
+
       const quoteForm = document.getElementById("quote-form");
 
       quoteForm.addEventListener("submit", (e) => {
         e.preventDefault();
         const text = quoteForm.text.value;
         const author = quoteForm.author.value;
+        quoteForm.reset();
         createNewQuote({ text, author });
       });
 
       function createNewQuote(quote) {
-        if (LOADING == "") {
-          LOADING = "CREATE";
+        if (getGlobalLoading() == "") {
+          setGlobalLoading("CREATE");
           fetch("/quote", {
             method: "PUT",
             headers: {
@@ -38,81 +127,79 @@
           })
             .then((res) => res.json())
             .then((newQuote) => {
-              QUOTES.push(newQuote);
-              renderQuotes(QUOTES);
-              LOADING = "";
+              setGlobalQuotes([...getGlobalQuotes(), newQuote]);
+              setGlobalLoading("");
             });
         }
       }
 
       function deleteQuote(quote) {
-        if (LOADING == "") {
-          LOADING = "DELETE";
+        if (getGlobalLoading() == "") {
+          setGlobalLoading("DELETE");
           fetch(`/quote?id=${encodeURIComponent(quote.id)}`, {
             method: "DELETE",
           })
             .then((res) => res.json())
             .then((data) => {
               if (data.success) {
-                QUOTES = QUOTES.filter((q) => q.id != quote.id);
-                renderQuotes(QUOTES)
+                setGlobalQuotes(
+                  getGlobalQuotes().filter((q) => q.id != quote.id)
+                );
               }
-              LOADING = "";
+              setGlobalLoading("");
             });
         }
       }
 
       function renderQuotes(quotes) {
-        console.log("rendering : ",quotes)
-        
-        const quoteContainer = document.getElementById("quote-container");
-        console.log(`removing ${quoteContainer.children.length} children`)
-        
-        while(quoteContainer.firstChild){
-            quoteContainer.removeChild(quoteContainer.firstChild)
-        }
-        
-        console.log(`adding ${quotes.length}`)        
-        
-        quotes.map((q) => createQuoteNode(q)).forEach((node) => {
-          quoteContainer.appendChild(node);
-        });
+        console.log(quotes);
 
+        const quoteContainer = document.getElementById("quote-container");
+
+        while (quoteContainer.firstChild) {
+          quoteContainer.removeChild(quoteContainer.firstChild);
+        }
+
+        quotes
+          .map((q) => createQuoteNode(q))
+          .forEach((node) => {
+            quoteContainer.appendChild(node);
+          });
       }
 
       function createQuoteNode(quote) {
         const { id, text, author } = quote;
         const div = document.createElement("div");
-        const textPart = document.createElement("p");
+        const textPart = document.createElement("span");
         textPart.classList.add("quote-text");
-        textPart.innerText = text
-        const authorPart = document.createElement("p");
-        authorPart.innerText = author
+        textPart.innerText = text;
+        const authorPart = document.createElement("span");
+        authorPart.innerText = `- ${author}`;
         const deleteButton = document.createElement("button");
-        deleteButton.innerText = "DELETE"
+        deleteButton.innerText = "DELETE";
         deleteButton.addEventListener("click", (e) => {
-            deleteQuote(quote)
+          deleteQuote(quote);
         });
         authorPart.classList.add("quote-author");
         div.appendChild(textPart);
         div.appendChild(authorPart);
-        div.appendChild(deleteButton)
+        div.appendChild(deleteButton);
         return div;
       }
 
       function main() {
+        setGlobalLoading("INIT");
         fetch("/quotes")
           .then((res) => res.json())
           .then((quotes) => {
-            QUOTES = quotes;
-            renderQuotes(QUOTES);
-            LOADING = "";
+            setGlobalQuotes(quotes);
+            setGlobalLoading("");
           });
       }
 
-      document.addEventListener("DOMContentLoaded",()=>{
-        main()
-      })
+      document.addEventListener("DOMContentLoaded", () => {
+        main();
+      });
     </script>
   </body>
 </html>
